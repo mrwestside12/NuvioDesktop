@@ -80,7 +80,7 @@ object TmdbMetadataService {
     ): Int? = withContext(Dispatchers.Default) {
         val settings = TmdbSettingsRepository.snapshot()
         val normalizedName = normalizePersonSearchName(personName)
-        if (!settings.enabled || TmdbConfig.API_KEY.isBlank() || normalizedName.isBlank()) {
+        if (!settings.enabled || activeTmdbApiKey() == null || normalizedName.isBlank()) {
             return@withContext null
         }
         val language = normalizeTmdbLanguage(settings.language)
@@ -1218,7 +1218,7 @@ object TmdbMetadataService {
         endpoint: String,
         query: Map<String, String> = emptyMap(),
     ): T? {
-        val apiKey = TmdbConfig.API_KEY.takeIf(String::isNotBlank) ?: return null
+        val apiKey = activeTmdbApiKey() ?: return null
         val url = buildTmdbUrl(endpoint = endpoint, apiKey = apiKey, query = query)
         return runCatching {
             json.decodeFromString<T>(httpGetText(url))
@@ -1435,6 +1435,17 @@ object TmdbMetadataService {
         return response?.results.orEmpty()
     }
 }
+
+private fun activeTmdbApiKey(): String? = selectTmdbApiKey(
+    bundledApiKey = TmdbConfig.API_KEY,
+    legacyApiKey = TmdbSettingsStorage.loadLegacyApiKey(),
+)
+
+internal fun selectTmdbApiKey(
+    bundledApiKey: String,
+    legacyApiKey: String?,
+): String? = bundledApiKey.trim().takeIf(String::isNotBlank)
+    ?: legacyApiKey?.trim()?.takeIf(String::isNotBlank)
 
 internal data class TmdbEnrichment(
     val localizedTitle: String?,

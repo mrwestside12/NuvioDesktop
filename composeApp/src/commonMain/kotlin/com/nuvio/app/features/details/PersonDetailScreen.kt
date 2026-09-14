@@ -103,13 +103,14 @@ fun PersonDetailScreen(
     modifier: Modifier = Modifier,
 ) {
     var uiState by remember(personId) { mutableStateOf<PersonDetailUiState>(PersonDetailUiState.Loading) }
+    var retryRequest by remember(personId) { mutableStateOf(0) }
     val watchedUiState by remember {
         WatchedRepository.ensureLoaded()
         WatchedRepository.uiState
     }.collectAsStateWithLifecycle()
     val resolvedAvatarTransitionKey = avatarTransitionKey ?: castAvatarSharedTransitionKey(personId)
 
-    LaunchedEffect(personId) {
+    LaunchedEffect(personId, retryRequest) {
         uiState = PersonDetailUiState.Loading
         val detail = TmdbMetadataService.fetchPersonDetail(
             personId = personId,
@@ -140,7 +141,7 @@ fun PersonDetailScreen(
                 message = state.message,
                 onRetry = {
                     uiState = PersonDetailUiState.Loading
-                    // Retry will be triggered by the LaunchedEffect above if we reset
+                    retryRequest += 1
                 },
             )
             is PersonDetailUiState.Success -> PersonDetailContent(

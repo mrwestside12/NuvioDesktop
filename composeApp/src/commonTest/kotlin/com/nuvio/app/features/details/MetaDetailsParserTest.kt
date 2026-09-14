@@ -261,6 +261,6 @@ class MetaDetailsParserTest {
             """.trimIndent(),
         )
 
-        assertEquals(listOf(123, 456, 789), result.cast.map { it.tmdbId })
+        assertEquals(listOf(null, 456, 789), result.cast.map { it.tmdbId })
     }
 }

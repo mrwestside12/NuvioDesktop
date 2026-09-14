@@ -194,8 +194,7 @@ internal object MetaDetailsParser {
                             role = element.string("character")?.trim()?.takeIf(String::isNotBlank),
                             photo = element.string("photo")?.trim()?.takeIf(String::isNotBlank),
                             tmdbId = element.int("tmdbId")
-                                ?: element.int("tmdb_id")
-                                ?: element.int("id"),
+                                ?: element.int("tmdb_id"),
                         )
                     }
                     is JsonPrimitive -> element.contentOrNull

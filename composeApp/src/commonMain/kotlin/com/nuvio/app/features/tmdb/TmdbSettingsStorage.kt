@@ -3,6 +3,8 @@ package com.nuvio.app.features.tmdb
 import kotlinx.serialization.json.JsonObject
 
 internal expect object TmdbSettingsStorage {
+    /** Reads API keys saved by Nuvio versions that predate the bundled-key change. */
+    fun loadLegacyApiKey(): String?
     fun loadEnabled(): Boolean?
     fun saveEnabled(enabled: Boolean)
     fun loadLanguage(): String?

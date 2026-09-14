@@ -12,6 +12,17 @@ import kotlin.test.assertTrue
 
 class TmdbMetadataServiceTest {
     @Test
+    fun `bundled tmdb key is preferred over a saved legacy key`() {
+        assertEquals("bundled", selectTmdbApiKey(" bundled ", "legacy"))
+    }
+
+    @Test
+    fun `saved legacy tmdb key is used when a custom build has no bundled key`() {
+        assertEquals("legacy", selectTmdbApiKey("", " legacy "))
+        assertNull(selectTmdbApiKey(" ", null))
+    }
+
+    @Test
     fun `person search prefers matching profile then popularity`() {
         val result = selectTmdbPersonSearchResult(
             personName = "Jennifer Lopez",

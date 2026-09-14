@@ -12,6 +12,7 @@ import kotlinx.serialization.json.put
 
 internal actual object TmdbSettingsStorage {
     private const val enabledKey = "tmdb_enabled"
+    private const val legacyApiKeyKey = "tmdb_api_key"
     private const val languageKey = "tmdb_language"
     private const val useTrailersKey = "tmdb_use_trailers"
     private const val useArtworkKey = "tmdb_use_artwork"
@@ -43,6 +44,7 @@ internal actual object TmdbSettingsStorage {
     )
     private val store = DesktopStorage.store("nuvio_tmdb_settings")
 
+    actual fun loadLegacyApiKey(): String? = loadString(legacyApiKeyKey)
     actual fun loadEnabled(): Boolean? = loadBoolean(enabledKey)
     actual fun saveEnabled(enabled: Boolean) = saveBoolean(enabledKey, enabled)
     actual fun loadLanguage(): String? = loadString(languageKey)

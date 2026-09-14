@@ -14,6 +14,7 @@ import kotlinx.serialization.json.put
 actual object TmdbSettingsStorage {
     private const val preferencesName = "nuvio_tmdb_settings"
     private const val enabledKey = "tmdb_enabled"
+    private const val legacyApiKeyKey = "tmdb_api_key"
     private const val languageKey = "tmdb_language"
     private const val useTrailersKey = "tmdb_use_trailers"
     private const val useArtworkKey = "tmdb_use_artwork"
@@ -49,6 +50,9 @@ actual object TmdbSettingsStorage {
     fun initialize(context: Context) {
         preferences = context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
     }
+
+    actual fun loadLegacyApiKey(): String? =
+        preferences?.getString(ProfileScopedKey.of(legacyApiKeyKey), null)
 
     actual fun loadEnabled(): Boolean? = loadBoolean(enabledKey)
 
