@@ -1190,6 +1190,11 @@ fun MetaDetailsScreen(
                                         },
                                         onPlayClick = onPrimaryPlayClick,
                                         onPlayLongClick = if (showManualPlayOption) onPrimaryPlayLongClick else null,
+                                        onShuffleClick = RandomEpisodePicker.eligibleEpisodes(meta.videos)
+                                            .takeIf { it.isNotEmpty() && onShuffle != null }
+                                            ?.let { episodes ->
+                                                { episodes.randomOrNull()?.let { onShuffle?.invoke(it) } }
+                                            },
                                         onWatchedClick = toggleWatched,
                                         onSaveClick = toggleSaved,
                                         onSaveLongClick = openLibraryListPicker,
@@ -2393,15 +2398,17 @@ private fun ConfiguredMetaSections(
                 DetailActionButtons(
                     playLabel = playButtonLabel,
                     secondaryActions = buildList {
-                        add(DetailSecondaryAction(
-                            label = stringResource(Res.string.action_shuffle),
-                            icon = Icons.Default.Shuffle,
-                            onClick = {
-                                RandomEpisodePicker.eligibleEpisodes(meta.videos)
-                                    .randomOrNull()
-                                    ?.let { onShuffle?.invoke(it) }
-                            },
-                        ))
+                        if (onShuffle != null && RandomEpisodePicker.eligibleEpisodes(meta.videos).isNotEmpty()) {
+                            add(DetailSecondaryAction(
+                                label = stringResource(Res.string.action_shuffle),
+                                icon = Icons.Default.Shuffle,
+                                onClick = {
+                                    RandomEpisodePicker.eligibleEpisodes(meta.videos)
+                                        .randomOrNull()
+                                        ?.let { onShuffle.invoke(it) }
+                                },
+                            ))
+                        }
                         add(DetailSecondaryAction(
                             label = if (isWatched) {
                                 stringResource(Res.string.hero_mark_unwatched)

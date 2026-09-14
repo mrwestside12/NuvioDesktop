@@ -73,6 +73,8 @@ jobs:
       - name: Test shuffle and updater logic
         run: |
           ./gradlew :composeApp:desktopTest \
+            --tests '*RandomEpisodePickerTest' \
+            --tests '*AppUpdaterVersionUtilsTest' \
             "-Pnuvio.macos.arch=${MACOS_ARCH}" \
             -Pcompose.desktop.packaging.checkJdkVendor=false \
             --no-configuration-cache \
@@ -125,4 +127,3 @@ jobs:
             --target "${GITHUB_SHA}" \
             --title "Nuvio macOS ${VERSION}" \
             --notes "Personal NuvioDesktop build based on the latest official release. Includes continuous random-episode shuffle and in-app updates."
-

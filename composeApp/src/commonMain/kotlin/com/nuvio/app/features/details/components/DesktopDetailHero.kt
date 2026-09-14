@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CheckCircleOutline
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -72,6 +73,7 @@ import com.nuvio.app.features.details.formatRuntimeForDisplay
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_IMDB
 import com.nuvio.app.features.tmdb.originalTmdbImageUrl
 import nuvio.composeapp.generated.resources.Res
+import nuvio.composeapp.generated.resources.action_shuffle
 import nuvio.composeapp.generated.resources.detail_logo_content_description
 import nuvio.composeapp.generated.resources.hero_add_to_library
 import nuvio.composeapp.generated.resources.hero_mark_unwatched
@@ -204,6 +206,7 @@ fun DesktopDetailHero(
     onHeroTrailerMuteToggle: () -> Unit,
     onPlayClick: () -> Unit,
     onPlayLongClick: (() -> Unit)?,
+    onShuffleClick: (() -> Unit)?,
     onWatchedClick: () -> Unit,
     onSaveClick: () -> Unit,
     onSaveLongClick: (() -> Unit)?,
@@ -303,8 +306,15 @@ fun DesktopDetailHero(
             DetailActionButtons(
                 modifier = Modifier.widthIn(max = 520.dp),
                 playLabel = playButtonLabel,
-                secondaryActions = listOf(
-                    DetailSecondaryAction(
+                secondaryActions = buildList {
+                    onShuffleClick?.let { shuffle ->
+                        add(DetailSecondaryAction(
+                            label = stringResource(Res.string.action_shuffle),
+                            icon = Icons.Default.Shuffle,
+                            onClick = shuffle,
+                        ))
+                    }
+                    add(DetailSecondaryAction(
                         label = if (isWatched) {
                             stringResource(Res.string.hero_mark_unwatched)
                         } else {
@@ -317,8 +327,8 @@ fun DesktopDetailHero(
                         },
                         isActive = isWatched,
                         onClick = onWatchedClick,
-                    ),
-                    DetailSecondaryAction(
+                    ))
+                    add(DetailSecondaryAction(
                         label = if (isSaved) {
                             stringResource(Res.string.hero_remove_from_library)
                         } else {
@@ -332,8 +342,8 @@ fun DesktopDetailHero(
                         isActive = isSaved,
                         onClick = onSaveClick,
                         onLongClick = onSaveLongClick,
-                    ),
-                ),
+                    ))
+                },
                 isTablet = true,
                 onPlayClick = onPlayClick,
                 onPlayLongClick = onPlayLongClick,
