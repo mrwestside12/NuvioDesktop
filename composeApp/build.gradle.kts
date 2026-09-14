@@ -63,6 +63,9 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
     @get:Input
     abstract val sentryEnvironment: Property<String>
 
+    @get:Input
+    abstract val tmdbApiKey: Property<String>
+
     @TaskAction
     fun generate() {
         val props = Properties()
@@ -99,7 +102,18 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
             )
         }
 
-        outDir.resolve("com/nuvio/app/features/tmdb/TmdbConfig.kt").delete()
+        outDir.resolve("com/nuvio/app/features/tmdb").apply {
+            mkdirs()
+            resolve("TmdbConfig.kt").writeText(
+                """
+                |package com.nuvio.app.features.tmdb
+                |
+                |object TmdbConfig {
+                |    const val API_KEY = "${tmdbApiKey.get()}"
+                |}
+                """.trimMargin()
+            )
+        }
 
         outDir.resolve("com/nuvio/app/features/trakt").apply {
             mkdirs()
@@ -594,6 +608,7 @@ val generateRuntimeConfigs = tasks.register<GenerateRuntimeConfigsTask>("generat
     supabaseFallbackUrl.set(runtimeConfigValue("NUVIO_SUPABASE_FALLBACK_URL"))
     sentryDsn.set(runtimeConfigValue("SENTRY_DSN"))
     sentryDesktopDsn.set(runtimeConfigValue("SENTRY_DESKTOP_DSN"))
+    tmdbApiKey.set(runtimeConfigValue("TMDB_API_KEY"))
     sentryEnvironment.set(
         when {
             requestedGradleTasks.any { "benchmark" in it } -> "benchmark"
@@ -1218,6 +1233,8 @@ kotlin {
         val androidHostTest by getting {
             dependencies {
                 implementation("org.robolectric:robolectric:4.16")
+                implementation("androidx.compose.ui:ui-test-junit4:${libs.versions.composeMultiplatform.get()}")
+                implementation("androidx.compose.ui:ui-test-manifest:${libs.versions.composeMultiplatform.get()}")
                 implementation("androidx.work:work-testing:${libs.versions.androidx.work.get()}")
                 implementation("com.squareup.okhttp3:mockwebserver:5.3.2")
             }
@@ -1247,7 +1264,6 @@ kotlin {
             implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
             implementation(libs.compose.uiToolingPreview)
-            implementation(libs.compottie)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.androidx.savedstate)
