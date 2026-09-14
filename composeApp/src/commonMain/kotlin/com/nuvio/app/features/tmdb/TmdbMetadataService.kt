@@ -80,7 +80,7 @@ object TmdbMetadataService {
     ): Int? = withContext(Dispatchers.Default) {
         val settings = TmdbSettingsRepository.snapshot()
         val normalizedName = normalizePersonSearchName(personName)
-        if (!settings.enabled || !settings.hasApiKey || normalizedName.isBlank()) {
+        if (!settings.enabled || TmdbConfig.API_KEY.isBlank() || normalizedName.isBlank()) {
             return@withContext null
         }
         val language = normalizeTmdbLanguage(settings.language)
