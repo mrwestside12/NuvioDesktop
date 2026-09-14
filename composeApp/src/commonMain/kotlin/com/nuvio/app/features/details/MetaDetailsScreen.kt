@@ -2386,8 +2386,14 @@ private fun ConfiguredMetaSections(
         }
     }
 
+    val shuffleHandler = onShuffle
+
     @Composable
-    fun RenderSection(key: MetaScreenSectionKey, showHeader: Boolean = true) {
+    fun RenderSection(
+        key: MetaScreenSectionKey,
+        showHeader: Boolean = true,
+        shuffle: ((MetaVideo) -> Unit)? = shuffleHandler,
+    ) {
         when (key) {
             MetaScreenSectionKey.ACTIONS -> {
                 DetailActionButtons(
@@ -2399,7 +2405,7 @@ private fun ConfiguredMetaSections(
                             onClick = {
                                 RandomEpisodePicker.eligibleEpisodes(meta.videos)
                                     .randomOrNull()
-                                    ?.let { onShuffle?.invoke(it) }
+                                    ?.let { shuffle?.invoke(it) }
                             },
                         ))
                         add(DetailSecondaryAction(
