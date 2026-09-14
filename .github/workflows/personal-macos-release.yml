@@ -73,8 +73,8 @@ jobs:
       - name: Test shuffle and updater logic
         run: |
           ./gradlew :composeApp:desktopTest \
-            --tests '*RandomEpisodePickerTest' \
-            --tests '*AppUpdaterVersionUtilsTest' \
+            --tests 'com.nuvio.app.features.details.RandomEpisodePickerTest' \
+            --tests 'com.nuvio.app.features.updater.AppUpdaterVersionUtilsTest' \
             "-Pnuvio.macos.arch=${MACOS_ARCH}" \
             -Pcompose.desktop.packaging.checkJdkVendor=false \
             --no-configuration-cache \

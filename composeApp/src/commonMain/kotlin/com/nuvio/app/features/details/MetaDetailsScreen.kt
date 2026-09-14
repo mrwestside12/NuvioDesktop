@@ -2391,21 +2391,27 @@ private fun ConfiguredMetaSections(
         }
     }
 
+    val shuffleHandler = onShuffle
+
     @Composable
-    fun RenderSection(key: MetaScreenSectionKey, showHeader: Boolean = true) {
+    fun RenderSection(
+        key: MetaScreenSectionKey,
+        showHeader: Boolean = true,
+        shuffle: ((MetaVideo) -> Unit)? = shuffleHandler,
+    ) {
         when (key) {
             MetaScreenSectionKey.ACTIONS -> {
                 DetailActionButtons(
                     playLabel = playButtonLabel,
                     secondaryActions = buildList {
-                        if (onShuffle != null && RandomEpisodePicker.eligibleEpisodes(meta.videos).isNotEmpty()) {
+                        if (shuffle != null && RandomEpisodePicker.eligibleEpisodes(meta.videos).isNotEmpty()) {
                             add(DetailSecondaryAction(
                                 label = stringResource(Res.string.action_shuffle),
                                 icon = Icons.Default.Shuffle,
                                 onClick = {
                                     RandomEpisodePicker.eligibleEpisodes(meta.videos)
                                         .randomOrNull()
-                                        ?.let { onShuffle.invoke(it) }
+                                        ?.let { shuffle.invoke(it) }
                                 },
                             ))
                         }
