@@ -239,4 +239,28 @@ class MetaDetailsParserTest {
 
         assertEquals("PG-13", result.ageRating)
     }
+
+    @Test
+    fun `parse preserves cast person identifiers from app extras`() {
+        val result = MetaDetailsParser.parse(
+            """
+            {
+              "meta": {
+                "id": "movie",
+                "type": "movie",
+                "name": "Movie",
+                "app_extras": {
+                  "cast": [
+                    { "id": 123, "name": "First Actor", "character": "Hero" },
+                    { "tmdbId": "456", "name": "Second Actor" },
+                    { "tmdb_id": 789, "name": "Third Actor" }
+                  ]
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(listOf(123, 456, 789), result.cast.map { it.tmdbId })
+    }
 }

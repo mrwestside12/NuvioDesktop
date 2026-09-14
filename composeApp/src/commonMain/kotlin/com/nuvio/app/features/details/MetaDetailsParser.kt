@@ -192,6 +192,9 @@ internal object MetaDetailsParser {
                             name = personName,
                             role = element.string("character")?.trim()?.takeIf(String::isNotBlank),
                             photo = element.string("photo")?.trim()?.takeIf(String::isNotBlank),
+                            tmdbId = element.int("tmdbId")
+                                ?: element.int("tmdb_id")
+                                ?: element.int("id"),
                         )
                     }
                     is JsonPrimitive -> element.contentOrNull
@@ -225,6 +228,7 @@ internal object MetaDetailsParser {
                     existing.copy(
                         role = existing.role ?: person.role,
                         photo = existing.photo ?: person.photo,
+                        tmdbId = existing.tmdbId ?: person.tmdbId,
                     )
                 }
             }

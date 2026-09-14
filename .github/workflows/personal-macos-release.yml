@@ -70,10 +70,12 @@ jobs:
           printf '%s' "${LOCAL_PROPERTIES_BASE64}" | base64 --decode > local.properties
           sed -i '' -E '/^[[:space:]]*(sdk\.dir|NUVIO_RELEASE_(STORE_FILE|STORE_PASSWORD|KEY_ALIAS|KEY_PASSWORD)|NUVIO_MACOS_.*)[[:space:]]*=/d' local.properties
 
-      - name: Test shuffle and updater logic
+      - name: Test personal features and updater logic
         run: |
           ./gradlew :composeApp:desktopTest \
             --tests 'com.nuvio.app.features.details.RandomEpisodePickerTest' \
+            --tests 'com.nuvio.app.features.details.MetaDetailsParserTest' \
+            --tests 'com.nuvio.app.features.tmdb.TmdbMetadataServiceTest' \
             --tests 'com.nuvio.app.features.updater.AppUpdaterVersionUtilsTest' \
             "-Pnuvio.macos.arch=${MACOS_ARCH}" \
             -Pcompose.desktop.packaging.checkJdkVendor=false \

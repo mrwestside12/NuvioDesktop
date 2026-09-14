@@ -12,8 +12,10 @@ import com.nuvio.app.features.details.MetaVideo
 import com.nuvio.app.features.details.PersonDetailScreen
 import com.nuvio.app.features.details.TmdbEntityBrowseScreen
 import com.nuvio.app.features.home.MetaPreview
+import com.nuvio.app.features.tmdb.TmdbMetadataService
 import com.nuvio.app.features.tmdb.TmdbEntityKind
 import com.nuvio.app.features.tmdb.TmdbService
+import com.nuvio.app.core.ui.NuvioToastController
 import com.nuvio.app.navigation.DetailRoute
 import com.nuvio.app.navigation.EntityBrowseRoute
 import com.nuvio.app.navigation.NuvioNavigator
@@ -24,6 +26,7 @@ import nuvio.composeapp.generated.resources.person_role_creator
 import nuvio.composeapp.generated.resources.person_role_director
 import nuvio.composeapp.generated.resources.person_role_writer
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.getString
 
 internal typealias ContentPlayAction = (
     type: String,
@@ -82,6 +85,7 @@ internal fun DetailsDestination(
 ) {
     val onBack = rememberGuardedPopBackStack(navController, route)
     val onOpenMeta = rememberOpenMeta(navController)
+    val castNavigationScope = rememberCoroutineScope()
     val directorRole = stringResource(Res.string.person_role_director)
     val writerRole = stringResource(Res.string.person_role_writer)
     val creatorRole = stringResource(Res.string.person_role_creator)
@@ -94,8 +98,16 @@ internal fun DetailsDestination(
         onShuffle = { video -> onShuffle?.invoke(route.id, video) },
         onOpenMeta = onOpenMeta,
         onCastClick = { person, avatarTransitionKey ->
-            val tmdbId = person.tmdbId
-            if (tmdbId != null && tmdbId > 0) {
+            castNavigationScope.launch {
+                val tmdbId = person.tmdbId?.takeIf { it > 0 }
+                    ?: TmdbMetadataService.resolvePersonId(
+                        personName = person.name,
+                        profilePhoto = person.photo,
+                    )
+                if (tmdbId == null) {
+                    NuvioToastController.show(getString(Res.string.person_load_failed, person.name))
+                    return@launch
+                }
                 navController.navigate(
                     PersonDetailRoute(
                         personId = tmdbId,

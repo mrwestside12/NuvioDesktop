@@ -53,9 +53,9 @@ jobs:
             exit 1
           fi
           grep -q 'object RandomEpisodePicker' composeApp/src/commonMain/kotlin/com/nuvio/app/features/details/RandomEpisodePicker.kt
+          grep -q 'resolvePersonId' composeApp/src/commonMain/kotlin/com/nuvio/app/features/tmdb/TmdbMetadataService.kt
           grep -q 'NUVIO_UPDATE_GITHUB_OWNER' composeApp/build.gradle.kts
           printf '%s\n' "${UPSTREAM_TAG}" > .github/personal-updater/upstream-release.txt
           git add .github/personal-updater/upstream-release.txt
           git commit --amend --no-edit
           git push origin HEAD:personal-desktop
-

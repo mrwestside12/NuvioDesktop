@@ -12,6 +12,43 @@ import kotlin.test.assertTrue
 
 class TmdbMetadataServiceTest {
     @Test
+    fun `person search prefers matching profile then popularity`() {
+        val result = selectTmdbPersonSearchResult(
+            personName = "Jennifer Lopez",
+            profilePhoto = "https://image.tmdb.org/t/p/w276_and_h350_face/portrait.jpg",
+            results = listOf(
+                TmdbPersonSearchResult(
+                    id = 1,
+                    name = "Jennifer Lopez",
+                    profilePath = "/different.jpg",
+                    popularity = 100.0,
+                ),
+                TmdbPersonSearchResult(
+                    id = 2,
+                    name = " Jennifer   Lopez ",
+                    profilePath = "/portrait.jpg",
+                    popularity = 10.0,
+                ),
+            ),
+        )
+
+        assertEquals(2, result)
+    }
+
+    @Test
+    fun `person search refuses a non exact name match`() {
+        val result = selectTmdbPersonSearchResult(
+            personName = "Chris Evans",
+            profilePhoto = null,
+            results = listOf(
+                TmdbPersonSearchResult(id = 1, name = "Christopher Evans", popularity = 99.0),
+            ),
+        )
+
+        assertNull(result)
+    }
+
+    @Test
     fun `buildStandaloneMeta maps tmdb enrichment without addon meta`() {
         val enrichment = TmdbEnrichment(
             localizedTitle = "TMDB Movie",

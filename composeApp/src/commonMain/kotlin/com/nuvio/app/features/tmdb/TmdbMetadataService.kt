@@ -35,9 +35,39 @@ object TmdbMetadataService {
     private val collectionCache = mutableMapOf<String, Pair<String?, List<MetaPreview>>>()
     private val trailerCache = mutableMapOf<String, List<MetaTrailer>>()
     private val personCache = mutableMapOf<String, PersonDetail>()
+    private val personIdCache = mutableMapOf<String, Int>()
     private val entityBrowseCache = mutableMapOf<String, TmdbEntityBrowseData>()
     private val entityHeaderCache = mutableMapOf<String, TmdbEntityHeader>()
     private val entityRailCache = mutableMapOf<String, List<MetaPreview>>()
+
+    suspend fun resolvePersonId(
+        personName: String,
+        profilePhoto: String? = null,
+    ): Int? = withContext(Dispatchers.Default) {
+        val settings = TmdbSettingsRepository.snapshot()
+        val normalizedName = normalizePersonSearchName(personName)
+        if (!settings.enabled || !settings.hasApiKey || normalizedName.isBlank()) {
+            return@withContext null
+        }
+        val language = normalizeTmdbLanguage(settings.language)
+        val cacheKey = "$normalizedName:$language"
+        personIdCache[cacheKey]?.let { return@withContext it }
+
+        val response = fetch<TmdbPersonSearchResponse>(
+            endpoint = "search/person",
+            query = mapOf(
+                "query" to personName.trim(),
+                "language" to language,
+            ),
+        )
+        val resolvedId = selectTmdbPersonSearchResult(
+            personName = personName,
+            profilePhoto = profilePhoto,
+            results = response?.results.orEmpty(),
+        )
+        resolvedId?.let { personIdCache[cacheKey] = it }
+        resolvedId
+    }
 
     suspend fun fetchPersonDetail(
         personId: Int,
@@ -1468,6 +1498,38 @@ internal fun normalizeTmdbLanguage(language: String?): String {
     }
 }
 
+internal fun selectTmdbPersonSearchResult(
+    personName: String,
+    profilePhoto: String?,
+    results: List<TmdbPersonSearchResult>,
+): Int? {
+    val expectedName = normalizePersonSearchName(personName)
+    if (expectedName.isBlank()) return null
+    val candidates = results.filter { result ->
+        result.id != null && result.id > 0 &&
+            (
+                normalizePersonSearchName(result.name) == expectedName ||
+                    normalizePersonSearchName(result.originalName) == expectedName
+            )
+    }
+    if (candidates.isEmpty()) return null
+    val expectedProfilePath = profilePhoto
+        ?.substringBefore('?')
+        ?.substringAfterLast('/')
+        ?.takeIf { it.isNotBlank() }
+    return candidates.maxWithOrNull(
+        compareBy<TmdbPersonSearchResult> { result ->
+            expectedProfilePath != null && result.profilePath?.substringAfterLast('/') == expectedProfilePath
+        }.thenBy { it.popularity ?: 0.0 },
+    )?.id
+}
+
+private fun normalizePersonSearchName(value: String?): String =
+    value.orEmpty()
+        .trim()
+        .lowercase()
+        .replace(Regex("\\s+"), " ")
+
 internal fun discoverResultsContainCjkTitles(results: List<TmdbDiscoverResult>): Boolean {
     return results.any { result ->
         containsCjkOrHangul(result.title ?: result.name ?: return@any false)
@@ -2114,6 +2176,20 @@ private data class TmdbPersonResponse(
 private data class TmdbPersonCombinedCreditsResponse(
     val cast: List<TmdbPersonCreditCast> = emptyList(),
     val crew: List<TmdbPersonCreditCrew> = emptyList(),
+)
+
+@Serializable
+internal data class TmdbPersonSearchResponse(
+    val results: List<TmdbPersonSearchResult> = emptyList(),
+)
+
+@Serializable
+internal data class TmdbPersonSearchResult(
+    val id: Int? = null,
+    val name: String? = null,
+    @SerialName("original_name") val originalName: String? = null,
+    @SerialName("profile_path") val profilePath: String? = null,
+    val popularity: Double? = null,
 )
 
 @Serializable
