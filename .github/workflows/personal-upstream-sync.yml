@@ -1,0 +1,61 @@
+name: Sync Official NuvioDesktop
+
+on:
+  schedule:
+    - cron: '17 10 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: personal-upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: personal-desktop
+          fetch-depth: 0
+
+      - name: Find newest official release
+        id: upstream
+        run: |
+          tag="$(gh api repos/NuvioMedia/NuvioDesktop/releases/latest --jq .tag_name)"
+          previous="$(tr -d '[:space:]' < .github/personal-updater/upstream-release.txt)"
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          if [[ "${tag}" == "${previous}" ]]; then
+            echo "changed=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "changed=true" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Merge official release and preserve personal features
+        if: steps.upstream.outputs.changed == 'true'
+        env:
+          UPSTREAM_TAG: ${{ steps.upstream.outputs.tag }}
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git remote add upstream https://github.com/NuvioMedia/NuvioDesktop.git
+          git fetch upstream --tags
+          if ! git merge --no-edit "${UPSTREAM_TAG}"; then
+            git merge --abort
+            gh issue create \
+              --title "Automatic desktop update needs attention: ${UPSTREAM_TAG}" \
+              --body "The official ${UPSTREAM_TAG} release could not be merged automatically. No personal release was changed."
+            exit 1
+          fi
+          grep -q 'object RandomEpisodePicker' composeApp/src/commonMain/kotlin/com/nuvio/app/features/details/RandomEpisodePicker.kt
+          grep -q 'NUVIO_UPDATE_GITHUB_OWNER' composeApp/build.gradle.kts
+          printf '%s\n' "${UPSTREAM_TAG}" > .github/personal-updater/upstream-release.txt
+          git add .github/personal-updater/upstream-release.txt
+          git commit --amend --no-edit
+          git push origin HEAD:personal-desktop
+

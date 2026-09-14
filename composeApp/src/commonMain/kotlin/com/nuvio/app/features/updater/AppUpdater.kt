@@ -78,7 +78,7 @@ private class NoChannelReleaseException : IllegalStateException(
     runBlocking { getString(Res.string.updates_no_channel_release) },
 )
 
-private object VersionUtils {
+internal object VersionUtils {
     fun normalize(raw: String?): String {
         if (raw.isNullOrBlank()) return ""
         return raw.trim().removePrefix("v").removePrefix("V")
@@ -96,22 +96,24 @@ private object VersionUtils {
     }
 
     fun isRemoteNewer(remote: String?, local: String?): Boolean {
-        val remoteParts = parseVersionParts(remote)
-        val localParts = parseVersionParts(local)
+        return compareVersions(remote, local) > 0
+    }
 
-        if (remoteParts == null || localParts == null) {
-            val remoteValue = normalize(remote)
-            val localValue = normalize(local)
-            return remoteValue.isNotBlank() && localValue.isNotBlank() && remoteValue != localValue
+    fun compareVersions(left: String?, right: String?): Int {
+        val leftParts = parseVersionParts(left)
+        val rightParts = parseVersionParts(right)
+
+        if (leftParts == null || rightParts == null) {
+            return normalize(left).compareTo(normalize(right))
         }
 
-        val maxSize = maxOf(remoteParts.size, localParts.size)
+        val maxSize = maxOf(leftParts.size, rightParts.size)
         for (index in 0 until maxSize) {
-            val remoteValue = remoteParts.getOrElse(index) { 0 }
-            val localValue = localParts.getOrElse(index) { 0 }
-            if (remoteValue != localValue) return remoteValue > localValue
+            val leftValue = leftParts.getOrElse(index) { 0 }
+            val rightValue = rightParts.getOrElse(index) { 0 }
+            if (leftValue != rightValue) return leftValue.compareTo(rightValue)
         }
-        return false
+        return 0
     }
 }
 
@@ -133,11 +135,14 @@ private object AppUpdaterRepository {
             }
 
             val releases = appUpdaterJson.decodeFromString<List<GitHubReleaseDto>>(response.body)
-            val release = releases.firstOrNull { release ->
+            val release = releases.filter { release ->
                 release.matchesRequestedChannel() &&
                     !release.draft &&
                     (source.includePrereleases || !release.prerelease)
             }
+                .maxWithOrNull(Comparator { left, right ->
+                    VersionUtils.compareVersions(left.tagName ?: left.name, right.tagName ?: right.name)
+                })
                 ?: throw NoChannelReleaseException()
 
             val tag = release.tagName?.takeIf { it.isNotBlank() }

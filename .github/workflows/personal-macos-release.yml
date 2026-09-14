@@ -1,0 +1,128 @@
+name: Build Personal macOS Release
+
+on:
+  push:
+    branches:
+      - personal-desktop
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: personal-macos-release
+  cancel-in-progress: false
+
+jobs:
+  metadata:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      code: ${{ steps.version.outputs.code }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - id: version
+        name: Choose personal version
+        shell: bash
+        run: |
+          base="$(sed -n 's/^VERSION_NAME=//p' composeApp/Configuration/DesktopVersion.properties)"
+          core="${base%%-*}"
+          echo "version=${core}-personal.${GITHUB_RUN_NUMBER}" >> "${GITHUB_OUTPUT}"
+          echo "code=${GITHUB_RUN_NUMBER}" >> "${GITHUB_OUTPUT}"
+
+  macos:
+    needs: metadata
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+    env:
+      LOCAL_PROPERTIES_BASE64: ${{ secrets.NUVIO_DESKTOP_LOCAL_PROPERTIES_BASE64 }}
+      NUVIO_DESKTOP_VERSION_NAME: ${{ needs.metadata.outputs.version }}
+      NUVIO_DESKTOP_VERSION_CODE: ${{ needs.metadata.outputs.code }}
+      NUVIO_UPDATE_GITHUB_OWNER: mrwestside12
+      MACOS_ARCH: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Fetch the matching macOS player runtime
+        run: git lfs pull --include="composeApp/src/desktopMain/native/macos/runtime/${MACOS_ARCH}/**" --exclude=""
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Restore app service configuration
+        run: |
+          if [[ -z "${LOCAL_PROPERTIES_BASE64}" ]]; then
+            echo "NUVIO_DESKTOP_LOCAL_PROPERTIES_BASE64 is not configured." >&2
+            exit 1
+          fi
+          printf '%s' "${LOCAL_PROPERTIES_BASE64}" | base64 --decode > local.properties
+          sed -i '' -E '/^[[:space:]]*(sdk\.dir|NUVIO_RELEASE_(STORE_FILE|STORE_PASSWORD|KEY_ALIAS|KEY_PASSWORD)|NUVIO_MACOS_.*)[[:space:]]*=/d' local.properties
+
+      - name: Test shuffle and updater logic
+        run: |
+          ./gradlew :composeApp:desktopTest \
+            "-Pnuvio.macos.arch=${MACOS_ARCH}" \
+            -Pcompose.desktop.packaging.checkJdkVendor=false \
+            --no-configuration-cache \
+            --no-daemon
+
+      - name: Build macOS DMG
+        env:
+          NUVIO_MACOS_NOTARY_KEYCHAIN_PROFILE: ''
+          NUVIO_MACOS_SIGNING_IDENTITY: ''
+        run: |
+          ./gradlew :composeApp:packageReleaseDmg \
+            "-Pnuvio.macos.arch=${MACOS_ARCH}" \
+            -Pcompose.desktop.packaging.checkJdkVendor=false \
+            --no-configuration-cache \
+            --no-daemon \
+            --stacktrace
+
+      - name: Verify DMG
+        run: |
+          dmg="composeApp/build/compose/release-dmgs/Nuvio-macOS-${MACOS_ARCH}-${NUVIO_DESKTOP_VERSION_NAME}.dmg"
+          test -f "${dmg}"
+          hdiutil verify "${dmg}"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Nuvio-macOS-${{ matrix.arch }}-${{ needs.metadata.outputs.version }}
+          path: composeApp/build/compose/release-dmgs/*.dmg
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    needs:
+      - metadata
+      - macos
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.metadata.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: Nuvio-macOS-*-${{ needs.metadata.outputs.version }}
+          merge-multiple: true
+          path: release-assets
+
+      - name: Publish installable GitHub release
+        run: |
+          gh release create "${VERSION}" release-assets/*.dmg \
+            --repo "${GITHUB_REPOSITORY}" \
+            --target "${GITHUB_SHA}" \
+            --title "Nuvio macOS ${VERSION}" \
+            --notes "Personal NuvioDesktop build based on the latest official release. Includes continuous random-episode shuffle and in-app updates."
+
